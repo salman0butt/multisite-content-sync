@@ -38,5 +38,25 @@ jobs:
           coverage: none
           tools: composer:v2
       - uses: ramsey/composer-install@v3
-      - run: composer cs
-      - run: composer analyse
+      - name: Run coding standards
+        run: |
+          set +e
+          vendor/bin/phpcs
+          status=$?
+          vendor/bin/phpcs --report=json > phpcs-report.json || true
+          vendor/bin/phpcbf || true
+          git diff --no-ext-diff > phpcbf.patch
+          exit "$status"
+      - name: Upload coding standards diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coding-standards-diagnostics
+          path: |
+            phpcs-report.json
+            phpcbf.patch
+          if-no-files-found: error
+          retention-days: 7
+      - name: Run static analysis
+        if: always()
+        run: composer analyse
