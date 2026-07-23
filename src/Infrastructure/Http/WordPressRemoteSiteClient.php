@@ -19,6 +19,9 @@ final readonly class WordPressRemoteSiteClient implements RemoteSiteClient {
 
 	public function handshake( Connection $connection ): array {
 		$endpoint = $connection->site_url . '/wp-json/mcs/v1/receiver/handshake';
+		$token    = base64_encode( // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- HTTP Basic authentication requires this encoding.
+			$connection->username . ':' . $this->cipher->decrypt( $connection->encrypted_credential )
+		);
 		$response = wp_safe_remote_get(
 			$endpoint,
 			array(
@@ -26,24 +29,25 @@ final readonly class WordPressRemoteSiteClient implements RemoteSiteClient {
 				'redirection' => 3,
 				'headers'     => array(
 					'Accept'        => 'application/json',
-					'Authorization' => 'Basic ' . base64_encode(
-						$connection->username . ':' . $this->cipher->decrypt( $connection->encrypted_credential )
-					),
+					'Authorization' => 'Basic ' . $token,
 					'User-Agent'    => 'Multisite-Content-Sync/' . MCS_VERSION . '; ' . home_url( '/' ),
 				),
 			)
 		);
 
 		if ( is_wp_error( $response ) ) {
-			throw new RuntimeException( $response->get_error_message() );
+			$message = sanitize_text_field( $response->get_error_message() );
+			throw new RuntimeException( $message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exceptions are not rendered as HTML.
 		}
 
 		$status_code = wp_remote_retrieve_response_code( $response );
 		$body        = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		if ( $status_code < 200 || $status_code >= 300 ) {
-			$message = is_array( $body ) && isset( $body['message'] ) ? (string) $body['message'] : 'Remote connection failed.';
-			throw new RuntimeException( $message );
+			$message = is_array( $body ) && isset( $body['message'] )
+				? sanitize_text_field( (string) $body['message'] )
+				: 'Remote connection failed.';
+			throw new RuntimeException( $message ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exceptions are not rendered as HTML.
 		}
 
 		if ( ! is_array( $body ) || empty( $body['site_uuid'] ) ) {
