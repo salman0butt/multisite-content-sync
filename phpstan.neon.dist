@@ -1,0 +1,11 @@
+parameters:
+	level: 8
+	paths:
+		- src
+		- multisite-content-sync.php
+		- uninstall.php
+	scanFiles:
+		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+		- tools/phpstan/constants.stub.php
+	treatPhpDocTypesAsCertain: false
+	reportUnmatchedIgnoredErrors: true

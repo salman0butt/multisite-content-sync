@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<ruleset name="Multisite Content Sync">
+	<description>WordPress Core and Extra standards for a modern PSR-4 plugin.</description>
+	<file>multisite-content-sync.php</file>
+	<file>src</file>
+	<file>tests</file>
+	<file>uninstall.php</file>
+	<exclude-pattern>vendor/*</exclude-pattern>
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<rule ref="WordPress-Extra">
+		<!-- PSR-4 maps class names to files; legacy class-*.php filenames would break that mapping. -->
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<!-- MCS is the established project abbreviation; all non-namespaced globals still use it. -->
+		<exclude name="WordPress.NamingConventions.PrefixAllGlobals.ShortPrefixPassed"/>
+	</rule>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="mcs"/>
+				<element value="MCS"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.WP.Capabilities">
+		<properties>
+			<property name="custom_capabilities" type="array">
+				<element value="mcs_receive_content"/>
+			</property>
+		</properties>
+	</rule>
+
+	<config name="minimum_supported_wp_version" value="7.0"/>
+</ruleset>
