@@ -1,6 +1,6 @@
 <?php
 /**
- * wpdb connection repository.
+ * Wpdb connection repository.
  *
  * @package MultisiteContentSync
  */
@@ -20,19 +20,30 @@ final readonly class WpdbConnectionRepository implements ConnectionRepository {
 	public function __construct( private wpdb $database ) {}
 
 	public function all(): array {
-		$rows = $this->database->get_results(
-			"SELECT * FROM {$this->table()} ORDER BY name ASC",
-			ARRAY_A,
+		$query = $this->database->prepare(
+			'SELECT * FROM %i ORDER BY name ASC',
+			$this->table(),
 		);
+		$rows  = $this->database->get_results( $query, ARRAY_A );
 
-		return array_values( array_map( $this->hydrate( ... ), is_array( $rows ) ? $rows : array() ) );
+		$connections = array();
+
+		foreach ( is_array( $rows ) ? $rows : array() as $row ) {
+			if ( is_array( $row ) ) {
+				$connections[] = $this->hydrate( $row );
+			}
+		}
+
+		return $connections;
 	}
 
 	public function find( int $id ): ?Connection {
-		$row = $this->database->get_row(
-			$this->database->prepare( "SELECT * FROM {$this->table()} WHERE id = %d", $id ),
-			ARRAY_A,
+		$query = $this->database->prepare(
+			'SELECT * FROM %i WHERE id = %d',
+			$this->table(),
+			$id,
 		);
+		$row   = $this->database->get_row( $query, ARRAY_A );
 
 		return is_array( $row ) ? $this->hydrate( $row ) : null;
 	}
@@ -88,6 +99,8 @@ final readonly class WpdbConnectionRepository implements ConnectionRepository {
 	}
 
 	/**
+	 * Hydrate a connection from a database row.
+	 *
 	 * @param array<string, mixed> $row Database row.
 	 */
 	private function hydrate( array $row ): Connection {
