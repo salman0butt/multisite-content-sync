@@ -34,7 +34,7 @@ final class ContentPayloadFactory {
 			throw new InvalidArgumentException( 'The source site identity is missing or invalid.' );
 		}
 
-		$media_ids       = $this->collect_media_ids( $post );
+		$media_ids      = $this->collect_media_ids( $post );
 		$featured_id    = get_post_thumbnail_id( $post );
 		$featured_image = $featured_id > 0 ? $this->media_item( $featured_id ) : null;
 		$media          = array();
@@ -163,7 +163,7 @@ final class ContentPayloadFactory {
 	private function collect_html_media_ids( string $content, array &$ids ): void {
 		$processor = new \WP_HTML_Tag_Processor( $content );
 
-		while ( $processor->next_tag( 'img' ) ) {
+		while ( $processor->next_tag( array( 'tag_name' => 'IMG' ) ) ) {
 			$urls = array();
 			$src  = $processor->get_attribute( 'src' );
 
@@ -194,11 +194,15 @@ final class ContentPayloadFactory {
 	}
 
 	/**
-	 * @param array<int, array<string, mixed>> $blocks Parsed blocks.
-	 * @param array<int, bool>                 $ids    Collected IDs.
+	 * @param array<array-key, mixed> $blocks Parsed blocks.
+	 * @param array<int, bool>        $ids    Collected IDs.
 	 */
 	private function collect_block_media_ids( array $blocks, array &$ids ): void {
 		foreach ( $blocks as $block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+
 			$attributes = isset( $block['attrs'] ) && is_array( $block['attrs'] )
 				? $block['attrs']
 				: array();

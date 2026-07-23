@@ -104,18 +104,22 @@ final readonly class WpdbJobRepository implements JobRepository {
 	): array {
 		$limit = max( 1, min( 50, $limit ) );
 
-		$this->database->query(
-			$this->database->prepare(
-				'UPDATE %i
-				SET status = %s, locked_at = NULL, available_at = %s
-				WHERE status = %s AND locked_at IS NOT NULL AND locked_at < %s',
-				$this->table(),
-				SyncJob::STATUS_RETRYING,
-				$this->format_date( $now ),
-				SyncJob::STATUS_PROCESSING,
-				$this->format_date( $stale_before ),
-			)
+		$recovery_query = $this->database->prepare(
+			'UPDATE %i
+			SET status = %s, locked_at = NULL, available_at = %s
+			WHERE status = %s AND locked_at IS NOT NULL AND locked_at < %s',
+			$this->table(),
+			SyncJob::STATUS_RETRYING,
+			$this->format_date( $now ),
+			SyncJob::STATUS_PROCESSING,
+			$this->format_date( $stale_before ),
 		);
+
+		if ( null === $recovery_query ) {
+			throw new RuntimeException( 'Unable to prepare stale job recovery.' );
+		}
+
+		$this->database->query( $recovery_query );
 
 		$query = $this->database->prepare(
 			'SELECT id FROM %i
@@ -132,20 +136,24 @@ final readonly class WpdbJobRepository implements JobRepository {
 		$jobs  = array();
 
 		foreach ( is_array( $ids ) ? $ids : array() as $candidate_id ) {
-			$id      = (int) $candidate_id;
-			$claimed = $this->database->query(
-				$this->database->prepare(
-					'UPDATE %i
-					SET status = %s, locked_at = %s, attempts = attempts + 1
-					WHERE id = %d AND status IN (%s, %s) AND locked_at IS NULL',
-					$this->table(),
-					SyncJob::STATUS_PROCESSING,
-					$this->format_date( $now ),
-					$id,
-					SyncJob::STATUS_PENDING,
-					SyncJob::STATUS_RETRYING,
-				)
+			$id          = (int) $candidate_id;
+			$claim_query = $this->database->prepare(
+				'UPDATE %i
+				SET status = %s, locked_at = %s, attempts = attempts + 1
+				WHERE id = %d AND status IN (%s, %s) AND locked_at IS NULL',
+				$this->table(),
+				SyncJob::STATUS_PROCESSING,
+				$this->format_date( $now ),
+				$id,
+				SyncJob::STATUS_PENDING,
+				SyncJob::STATUS_RETRYING,
 			);
+
+			if ( null === $claim_query ) {
+				throw new RuntimeException( 'Unable to prepare a synchronization job claim.' );
+			}
+
+			$claimed = $this->database->query( $claim_query );
 
 			if ( 1 !== $claimed ) {
 				continue;
@@ -237,6 +245,10 @@ final readonly class WpdbJobRepository implements JobRepository {
 			SyncJob::STATUS_PENDING,
 			SyncJob::STATUS_RETRYING,
 		);
+
+		if ( null === $query ) {
+			throw new RuntimeException( 'Unable to prepare synchronization job cancellation.' );
+		}
 
 		return 1 === $this->database->query( $query );
 	}

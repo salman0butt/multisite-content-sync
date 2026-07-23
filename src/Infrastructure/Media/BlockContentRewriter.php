@@ -32,17 +32,19 @@ final class BlockContentRewriter {
 			return $content;
 		}
 
+		/** @var array<array-key, mixed> $blocks */
 		$blocks = parse_blocks( $content );
 		$blocks = $this->rewrite_blocks( $blocks, $media_map, $url_replacements );
 
+		/** @var array<int|string, array{blockName: string|null, attrs: array, innerBlocks: array<array>, innerHTML: string, innerContent: array}> $blocks */
 		return serialize_blocks( $blocks );
 	}
 
 	/**
-	 * @param array<int, array<string, mixed>>                            $blocks           Parsed blocks.
+	 * @param array<array-key, mixed>                                    $blocks           Parsed blocks.
 	 * @param array<int, array{id: int, url: string, source_url: string}> $media_map        Destination media by source ID.
 	 * @param array<string, string>                                       $url_replacements Source URL map.
-	 * @return array<int, array<string, mixed>>
+	 * @return array<array-key, mixed>
 	 */
 	private function rewrite_blocks(
 		array $blocks,
@@ -50,6 +52,10 @@ final class BlockContentRewriter {
 		array $url_replacements,
 	): array {
 		foreach ( $blocks as &$block ) {
+			if ( ! is_array( $block ) ) {
+				continue;
+			}
+
 			if ( isset( $block['attrs'] ) && is_array( $block['attrs'] ) ) {
 				$block['attrs'] = $this->rewrite_attributes( $block['attrs'], $media_map, $url_replacements );
 			}

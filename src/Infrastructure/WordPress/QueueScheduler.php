@@ -34,6 +34,7 @@ final readonly class QueueScheduler implements Hookable {
 	 * @return array<string, array{interval: int, display: string}>
 	 */
 	public function add_schedule( array $schedules ): array {
+		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval -- Queue latency requires one-minute polling; production documentation recommends a real system cron.
 		$schedules['mcs_minute'] = array(
 			'interval' => 60,
 			'display'  => __( 'Every minute', 'multisite-content-sync' ),

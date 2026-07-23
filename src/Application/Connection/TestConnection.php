@@ -56,7 +56,8 @@ final readonly class TestConnection {
 						$checked_at,
 					)
 				);
-			} catch ( Throwable ) {
+			} catch ( Throwable $persistence_error ) {
+				unset( $persistence_error );
 				// Keep the original transport or authentication failure.
 			}
 

@@ -81,7 +81,7 @@ final readonly class WordPressRemoteSiteClient implements RemoteSiteClient {
 			: wp_safe_remote_post( $endpoint, $args );
 
 		if ( $response instanceof WP_Error ) {
-			throw new RemoteSyncException(
+			throw new RemoteSyncException( // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception data is not output directly.
 				'The destination site could not be reached.',
 				0,
 				'mcs_transport_error',
@@ -90,12 +90,15 @@ final readonly class WordPressRemoteSiteClient implements RemoteSiteClient {
 			);
 		}
 
-		$status_code = wp_remote_retrieve_response_code( $response );
+		$status_code = (int) wp_remote_retrieve_response_code( $response );
 		$raw_body    = wp_remote_retrieve_body( $response );
 		$body        = json_decode( $raw_body, true );
 
 		if ( ! is_array( $body ) ) {
-			throw new RemoteSyncException( 'The destination returned invalid JSON.', $status_code );
+			throw new RemoteSyncException( // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Status code is internal exception context.
+				'The destination returned invalid JSON.',
+				$status_code,
+			);
 		}
 
 		if ( $status_code < 200 || $status_code >= 300 ) {
@@ -107,7 +110,12 @@ final readonly class WordPressRemoteSiteClient implements RemoteSiteClient {
 				? $this->safe_error_details( $body['data'] )
 				: array();
 
-			throw new RemoteSyncException( $message, $status_code, $code, $details );
+			throw new RemoteSyncException( // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Values are sanitized remote exception context.
+				$message,
+				$status_code,
+				$code,
+				$details,
+			);
 		}
 
 		return $body;
@@ -121,7 +129,7 @@ final readonly class WordPressRemoteSiteClient implements RemoteSiteClient {
 		$safe = array();
 
 		foreach ( array( 'destination_object_id', 'destination_hash', 'status' ) as $key ) {
-			if ( isset( $details[ $key ] ) && ( is_scalar( $details[ $key ] ) || null === $details[ $key ] ) ) {
+			if ( array_key_exists( $key, $details ) && ( is_scalar( $details[ $key ] ) || null === $details[ $key ] ) ) {
 				$safe[ $key ] = $details[ $key ];
 			}
 		}

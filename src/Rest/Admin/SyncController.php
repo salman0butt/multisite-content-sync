@@ -35,7 +35,7 @@ final readonly class SyncController implements Hookable {
 				'callback'            => array( $this, 'enqueue' ),
 				'permission_callback' => array( $this, 'can_manage' ),
 				'args'                => array(
-					'post_id' => array(
+					'post_id'        => array(
 						'type'     => 'integer',
 						'required' => true,
 						'minimum'  => 1,
@@ -49,7 +49,7 @@ final readonly class SyncController implements Hookable {
 							'minimum' => 1,
 						),
 					),
-					'force' => array(
+					'force'          => array(
 						'type'    => 'boolean',
 						'default' => false,
 					),
@@ -69,7 +69,7 @@ final readonly class SyncController implements Hookable {
 		try {
 			$jobs = $this->enqueue_sync->execute(
 				(int) $request->get_param( 'post_id' ),
-				is_array( $connection_ids ) ? array_map( 'intval', $connection_ids ) : array(),
+				is_array( $connection_ids ) ? array_values( array_map( 'intval', $connection_ids ) ) : array(),
 				(bool) $request->get_param( 'force' ),
 			);
 

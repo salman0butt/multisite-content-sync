@@ -53,7 +53,7 @@ final readonly class AutoSyncSubscriber implements Hookable {
 		}
 
 		try {
-			$this->enqueue_sync->execute( $post->ID, array_map( 'intval', $connection_ids ) );
+			$this->enqueue_sync->execute( $post->ID, array_values( array_map( 'intval', $connection_ids ) ) );
 		} catch ( Throwable $error ) {
 			$this->logger->log(
 				'error',

@@ -12,8 +12,71 @@ namespace SalmanButt\Multisite_Content_Sync\Application\Content;
 use InvalidArgumentException;
 use RuntimeException;
 use WP_Error;
+use WP_Term;
 
 final class TermSynchronizer {
+	/**
+	 * @param array<string, mixed>                   $taxonomies   Incoming taxonomy data.
+	 * @param list<array{taxonomy: string, id: int}> $created_terms Terms created during this operation.
+	 */
+	public function synchronize(
+		int $post_id,
+		string $post_type,
+		array $taxonomies,
+		array &$created_terms = array(),
+	): void {
+		$this->validate( $post_type, $taxonomies );
+
+		foreach ( $taxonomies as $taxonomy => $terms ) {
+			$term_ids = array();
+
+			foreach ( $terms as $term ) {
+				$name        = sanitize_text_field( (string) $term['name'] );
+				$slug        = sanitize_title( (string) $term['slug'] );
+				$description = isset( $term['description'] )
+					? sanitize_textarea_field( (string) $term['description'] )
+					: '';
+				$existing    = get_term_by( 'slug', $slug, $taxonomy );
+
+				if ( $existing instanceof WP_Term ) {
+					$term_ids[] = (int) $existing->term_id;
+					continue;
+				}
+
+				if ( is_array( $existing ) && isset( $existing['term_id'] ) ) {
+					$term_ids[] = (int) $existing['term_id'];
+					continue;
+				}
+
+				$created = wp_insert_term(
+					$name,
+					$taxonomy,
+					array(
+						'slug'        => $slug,
+						'description' => $description,
+					)
+				);
+
+				if ( $created instanceof WP_Error ) {
+					throw new RuntimeException( 'Unable to create a destination taxonomy term.' );
+				}
+
+				$created_id      = (int) $created['term_id'];
+				$term_ids[]      = $created_id;
+				$created_terms[] = array(
+					'taxonomy' => $taxonomy,
+					'id'       => $created_id,
+				);
+			}
+
+			$result = wp_set_object_terms( $post_id, $term_ids, $taxonomy, false );
+
+			if ( $result instanceof WP_Error ) {
+				throw new RuntimeException( 'Unable to assign destination taxonomy terms.' );
+			}
+		}
+	}
+
 	/**
 	 * @param array<string, mixed> $taxonomies Incoming taxonomy data.
 	 */
@@ -46,63 +109,6 @@ final class TermSynchronizer {
 				if ( '' === $name || '' === $slug ) {
 					throw new InvalidArgumentException( 'Taxonomy term names and slugs are required.' );
 				}
-			}
-		}
-	}
-
-	/**
-	 * @param array<string, mixed>                   $taxonomies   Incoming taxonomy data.
-	 * @param list<array{taxonomy: string, id: int}> $created_terms Terms created during this operation.
-	 */
-	public function synchronize(
-		int $post_id,
-		string $post_type,
-		array $taxonomies,
-		array &$created_terms = array(),
-	): void {
-		$this->validate( $post_type, $taxonomies );
-
-		foreach ( $taxonomies as $taxonomy => $terms ) {
-			$term_ids = array();
-
-			foreach ( $terms as $term ) {
-				$name        = sanitize_text_field( (string) $term['name'] );
-				$slug        = sanitize_title( (string) $term['slug'] );
-				$description = isset( $term['description'] )
-					? sanitize_textarea_field( (string) $term['description'] )
-					: '';
-				$existing    = get_term_by( 'slug', $slug, $taxonomy );
-
-				if ( false !== $existing ) {
-					$term_ids[] = (int) $existing->term_id;
-					continue;
-				}
-
-				$created = wp_insert_term(
-					$name,
-					$taxonomy,
-					array(
-						'slug'        => $slug,
-						'description' => $description,
-					)
-				);
-
-				if ( $created instanceof WP_Error ) {
-					throw new RuntimeException( 'Unable to create a destination taxonomy term.' );
-				}
-
-				$created_id     = (int) $created['term_id'];
-				$term_ids[]      = $created_id;
-				$created_terms[] = array(
-					'taxonomy' => $taxonomy,
-					'id'       => $created_id,
-				);
-			}
-
-			$result = wp_set_object_terms( $post_id, $term_ids, $taxonomy, false );
-
-			if ( $result instanceof WP_Error ) {
-				throw new RuntimeException( 'Unable to assign destination taxonomy terms.' );
 			}
 		}
 	}

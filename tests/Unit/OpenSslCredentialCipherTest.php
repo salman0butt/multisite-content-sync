@@ -35,8 +35,11 @@ final class OpenSslCredentialCipherTest extends TestCase {
 	public function test_tampered_ciphertext_is_rejected(): void {
 		$cipher    = new OpenSslCredentialCipher();
 		$encrypted = $cipher->encrypt( 'application-password' );
-		$last      = substr( $encrypted, -1 );
-		$tampered  = substr( $encrypted, 0, -1 ) . ( 'A' === $last ? 'B' : 'A' );
+		$binary    = base64_decode( substr( $encrypted, 3 ), true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- Decodes a test ciphertext fixture.
+
+		self::assertIsString( $binary );
+		$binary[15] = chr( ord( $binary[15] ) ^ 1 );
+		$tampered   = 'v2:' . base64_encode( $binary ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Re-encodes a test ciphertext fixture.
 
 		$this->expectException( RuntimeException::class );
 		$cipher->decrypt( $tampered );
@@ -60,7 +63,7 @@ final class OpenSslCredentialCipherTest extends TestCase {
 
 		self::assertIsString( $payload );
 
-		$legacy = base64_encode( $iv . $tag . $payload );
+		$legacy = base64_encode( $iv . $tag . $payload ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- Builds a legacy binary ciphertext fixture.
 		$cipher = new OpenSslCredentialCipher();
 
 		self::assertSame( 'legacy-password', $cipher->decrypt( $legacy ) );

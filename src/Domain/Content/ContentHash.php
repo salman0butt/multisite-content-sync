@@ -39,14 +39,13 @@ final class ContentHash {
 	 */
 	public static function from_state( array $state ): string {
 		$normalized = self::normalize( $state );
+		$json       = json_encode( // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode -- Pure domain code must remain usable without a loaded WordPress runtime.
+			$normalized,
+			JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
+		);
 
-		try {
-			$json = json_encode(
-				$normalized,
-				JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
-			);
-		} catch ( \JsonException $error ) {
-			throw new \RuntimeException( 'Unable to encode synchronized content for hashing.', 0, $error );
+		if ( false === $json ) {
+			throw new \RuntimeException( 'Unable to encode synchronized content for hashing.' );
 		}
 
 		return hash( 'sha256', $json );

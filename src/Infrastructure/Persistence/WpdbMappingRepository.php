@@ -39,7 +39,7 @@ final readonly class WpdbMappingRepository implements MappingRepository {
 	}
 
 	public function save( ContentMapping $mapping ): ContentMapping {
-		$data = array(
+		$data    = array(
 			'connection_id'         => $mapping->connection_id,
 			'source_object_type'    => $mapping->source_object_type,
 			'source_object_id'      => $mapping->source_object_id,
