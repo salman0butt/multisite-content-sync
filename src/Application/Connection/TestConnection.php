@@ -53,7 +53,8 @@ final readonly class TestConnection {
 				)
 			);
 
-			throw new RuntimeException( sanitize_text_field( $throwable->getMessage() ), 0, $throwable );
+			$message = sanitize_text_field( $throwable->getMessage() );
+			throw new RuntimeException( $message, 0, $throwable ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exceptions are not rendered as HTML.
 		}
 	}
 }
