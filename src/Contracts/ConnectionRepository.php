@@ -19,6 +19,8 @@ interface ConnectionRepository {
 
 	public function find( int $id ): ?Connection;
 
+	public function find_by_site_url( string $site_url ): ?Connection;
+
 	public function save( Connection $connection ): Connection;
 
 	public function delete( int $id ): bool;

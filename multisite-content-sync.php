@@ -3,7 +3,7 @@
  * Plugin Name:       Multisite Content Sync
  * Plugin URI:        https://github.com/salman0butt/multisite-content-sync
  * Description:       Securely synchronize WordPress content across independent sites.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            Salman Butt
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MCS_VERSION', '0.1.0' );
+define( 'MCS_VERSION', '0.2.0' );
 define( 'MCS_FILE', __FILE__ );
 define( 'MCS_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MCS_URL', plugin_dir_url( __FILE__ ) );

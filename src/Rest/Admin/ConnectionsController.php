@@ -16,6 +16,8 @@ use SalmanButt\Multisite_Content_Sync\Application\Connection\TestConnection;
 use SalmanButt\Multisite_Content_Sync\Contracts\ConnectionRepository;
 use SalmanButt\Multisite_Content_Sync\Contracts\Hookable;
 use SalmanButt\Multisite_Content_Sync\Domain\Connection\Connection;
+use SalmanButt\Multisite_Content_Sync\Domain\Connection\ConnectionInUseException;
+use SalmanButt\Multisite_Content_Sync\Domain\Sync\RemoteSyncException;
 use Throwable;
 use WP_Error;
 use WP_REST_Request;
@@ -60,12 +62,7 @@ final readonly class ConnectionsController implements Hookable {
 				'methods'             => WP_REST_Server::DELETABLE,
 				'callback'            => array( $this, 'delete' ),
 				'permission_callback' => array( $this, 'can_manage' ),
-				'args'                => array(
-					'id' => array(
-						'type'    => 'integer',
-						'minimum' => 1,
-					),
-				),
+				'args'                => $this->id_argument(),
 			)
 		);
 
@@ -76,12 +73,7 @@ final readonly class ConnectionsController implements Hookable {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'test' ),
 				'permission_callback' => array( $this, 'can_manage' ),
-				'args'                => array(
-					'id' => array(
-						'type'    => 'integer',
-						'minimum' => 1,
-					),
-				),
+				'args'                => $this->id_argument(),
 			)
 		);
 	}
@@ -91,9 +83,18 @@ final readonly class ConnectionsController implements Hookable {
 		return current_user_can( 'manage_options' );
 	}
 
-	public function index( WP_REST_Request $request ): WP_REST_Response {
+	public function index( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		unset( $request );
-		return new WP_REST_Response( array_map( $this->serialize( ... ), $this->connections->all() ) );
+
+		try {
+			return new WP_REST_Response( array_map( $this->serialize( ... ), $this->connections->all() ) );
+		} catch ( Throwable ) {
+			return new WP_Error(
+				'mcs_connections_read_failed',
+				__( 'Unable to load destination connections.', 'multisite-content-sync' ),
+				array( 'status' => 500 )
+			);
+		}
 	}
 
 	public function create( WP_REST_Request $request ): WP_REST_Response|WP_Error {
@@ -106,8 +107,12 @@ final readonly class ConnectionsController implements Hookable {
 			);
 
 			return new WP_REST_Response( $this->serialize( $connection ), 201 );
-		} catch ( InvalidArgumentException $exception ) {
-			return new WP_Error( 'mcs_invalid_connection', sanitize_text_field( $exception->getMessage() ), array( 'status' => 400 ) );
+		} catch ( InvalidArgumentException $error ) {
+			return new WP_Error(
+				'mcs_invalid_connection',
+				sanitize_text_field( $error->getMessage() ),
+				array( 'status' => 400 )
+			);
 		} catch ( Throwable ) {
 			return new WP_Error(
 				'mcs_connection_create_failed',
@@ -118,26 +123,50 @@ final readonly class ConnectionsController implements Hookable {
 	}
 
 	public function delete( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$id = (int) $request->get_param( 'id' );
+		try {
+			if ( ! $this->delete_connection->execute( (int) $request->get_param( 'id' ) ) ) {
+				return new WP_Error(
+					'mcs_connection_not_found',
+					__( 'The destination connection does not exist.', 'multisite-content-sync' ),
+					array( 'status' => 404 )
+				);
+			}
 
-		if ( ! $this->delete_connection->execute( $id ) ) {
+			return new WP_REST_Response( null, 204 );
+		} catch ( ConnectionInUseException ) {
+			return new WP_Error(
+				'mcs_connection_busy',
+				__( 'Wait for in-progress synchronization jobs before deleting this connection.', 'multisite-content-sync' ),
+				array( 'status' => 409 )
+			);
+		} catch ( Throwable ) {
 			return new WP_Error(
 				'mcs_connection_delete_failed',
-				__( 'Unable to delete the connection.', 'multisite-content-sync' ),
-				array( 'status' => 404 )
+				__( 'Unable to delete the destination connection.', 'multisite-content-sync' ),
+				array( 'status' => 500 )
 			);
 		}
-
-		return new WP_REST_Response( null, 204 );
 	}
 
 	public function test( WP_REST_Request $request ): WP_REST_Response|WP_Error {
 		try {
 			return new WP_REST_Response( $this->test_connection->execute( (int) $request->get_param( 'id' ) ) );
-		} catch ( Throwable $throwable ) {
+		} catch ( InvalidArgumentException $error ) {
+			return new WP_Error(
+				'mcs_connection_not_found',
+				sanitize_text_field( $error->getMessage() ),
+				array( 'status' => 404 )
+			);
+		} catch ( RemoteSyncException $error ) {
 			return new WP_Error(
 				'mcs_connection_test_failed',
-				sanitize_text_field( $throwable->getMessage() ),
+				sanitize_text_field( $error->getMessage() ),
+				array( 'status' => 502 )
+			);
+		} catch ( Throwable ) {
+			return new WP_Error(
+				'mcs_connection_test_failed',
+				__( 'Unable to test the destination connection.', 'multisite-content-sync' ),
 				array( 'status' => 502 )
 			);
 		}
@@ -148,25 +177,41 @@ final readonly class ConnectionsController implements Hookable {
 	 */
 	private function create_args(): array {
 		return array(
-			'name'                 => array(
+			'name' => array(
 				'type'      => 'string',
 				'required'  => true,
 				'minLength' => 1,
+				'maxLength' => 190,
 			),
-			'site_url'             => array(
-				'type'     => 'string',
-				'required' => true,
-				'format'   => 'uri',
+			'site_url' => array(
+				'type'      => 'string',
+				'required'  => true,
+				'format'    => 'uri',
+				'maxLength' => 190,
 			),
-			'username'             => array(
+			'username' => array(
 				'type'      => 'string',
 				'required'  => true,
 				'minLength' => 1,
+				'maxLength' => 100,
 			),
 			'application_password' => array(
 				'type'      => 'string',
 				'required'  => true,
 				'minLength' => 1,
+				'maxLength' => 255,
+			),
+		);
+	}
+
+	/**
+	 * @return array<string, array<string, mixed>>
+	 */
+	private function id_argument(): array {
+		return array(
+			'id' => array(
+				'type'    => 'integer',
+				'minimum' => 1,
 			),
 		);
 	}

@@ -1,44 +1,48 @@
 # Multisite Content Sync
 
-A secure, maintainable WordPress plugin for synchronizing content from one source site to multiple independent destination sites.
+A secure hub-and-spoke WordPress plugin for synchronizing posts and pages from one source site to multiple independent destination sites.
 
-## Status
+## Current status
 
-The first production-oriented foundation is implemented:
+Version `0.2.0` implements the complete backend MVP:
 
-- PHP 8.3 minimum with CI coverage for PHP 8.3, 8.4, and 8.5
-- WordPress 7.0 minimum
-- strict types, namespaces, immutable domain objects, enums, and constructor injection
-- versioned database schema for connections, rules, mappings, jobs, and logs
-- encrypted Application Password storage using AES-256-GCM
-- least-privilege receiver capability and dedicated receiver role
-- authenticated receiver handshake endpoint
-- connection create/list/delete/test REST endpoints
-- WordPress Coding Standards, PHPStan level 8, and PHPUnit configuration
+- secure destination connections using WordPress Application Passwords
+- encrypted credentials with versioned AES-256-GCM envelopes
+- authenticated receiver handshake and content endpoints
+- idempotent post and page upserts
+- category and tag synchronization
+- featured-image and Gutenberg media synchronization
+- source-to-destination mappings
+- destination conflict detection with explicit force overwrite
+- durable background jobs, atomic claiming, retries, cancellation, and stale-lock recovery
+- sanitized structured logs
+- PHP 8.3 minimum with CI on PHP 8.3, 8.4, and 8.5
+- WordPress Core and Extra coding standards, PHPStan level 8, and PHPUnit
 
-## Architecture
-
-The project uses a lightweight layered architecture:
-
-```text
-Domain <- Application <- Delivery (REST/Admin)
-   ^           ^
-   |           |
-Contracts <- Infrastructure (wpdb, HTTP, encryption)
-```
-
-The `Plugin` class is the composition root. Business use cases depend on interfaces rather than WordPress infrastructure, which keeps the code testable and prevents controllers from becoming large service objects.
-
-See [docs/architecture.md](docs/architecture.md).
+The administration experience is intentionally API-first for this release. A React dashboard and Gutenberg document panel remain future UI work.
 
 ## Requirements
 
 - WordPress 7.0+
 - PHP 8.3+
-- OpenSSL PHP extension
-- HTTPS on every connected destination
+- OpenSSL
+- HTTPS on source and destination sites (including synchronized media URLs)
+- WordPress Application Passwords enabled on destination sites
 
-WordPress Application Passwords must be used for remote authentication. Never use an administrator's main account password.
+Install the plugin on both source and destination sites. Create a dedicated destination user with the **Content Sync Receiver** role, then generate an Application Password for that user.
+
+## Architecture
+
+```text
+Domain <- Application <- REST/Admin
+   ^           ^
+   |           |
+Contracts <- Infrastructure
+```
+
+The plugin uses immutable domain objects, dependency inversion, small application services, and WordPress adapters. Remote work never runs inside a normal post-save request.
+
+See [docs/architecture.md](docs/architecture.md).
 
 ## Development
 
@@ -47,15 +51,7 @@ composer install
 composer check
 ```
 
-Useful commands:
-
-```bash
-composer lint
-composer cs
-composer cs:fix
-composer analyse
-composer test
-```
+The full check runs syntax validation, WordPress coding standards, PHPStan level 8, and PHPUnit.
 
 ## REST API
 
@@ -66,38 +62,54 @@ GET    /wp-json/mcs/v1/connections
 POST   /wp-json/mcs/v1/connections
 DELETE /wp-json/mcs/v1/connections/{id}
 POST   /wp-json/mcs/v1/connections/{id}/test
+
+POST   /wp-json/mcs/v1/sync
+GET    /wp-json/mcs/v1/jobs
+POST   /wp-json/mcs/v1/jobs/{id}/retry
+DELETE /wp-json/mcs/v1/jobs/{id}
 ```
 
-Create payload:
+The destination receiver user requires `mcs_receive_content`:
+
+```text
+GET  /wp-json/mcs/v1/receiver/handshake
+POST /wp-json/mcs/v1/receiver/content
+```
+
+### Queue a post or page
 
 ```json
 {
-  "name": "UK website",
-  "site_url": "https://uk.example.com",
-  "username": "mcs-receiver",
-  "application_password": "xxxx xxxx xxxx xxxx xxxx xxxx"
+  "post_id": 123,
+  "connection_ids": [1, 2],
+  "force": false
 }
 ```
 
-The receiver route requires a user with `mcs_receive_content`:
+Omitting `connection_ids` queues all connections currently marked connected.
 
-```text
-GET /wp-json/mcs/v1/receiver/handshake
-```
+### Automatic synchronization
 
-## Roadmap
+Automatic synchronization is opt-in. Return connection IDs through the `mcs_auto_sync_connection_ids` filter. The save hook only enqueues work; it never performs remote HTTP calls.
 
-1. Idempotent post and page upserts
-2. Durable queue processing and retry policy
-3. Source-to-destination content mappings
-4. Category, tag, featured image, and inline media synchronization
-5. Conflict detection through source and destination hashes
-6. React administration interface using WordPress components
-7. Gutenberg document panel and manual sync controls
+## Conflict behavior
+
+The destination stores a hash of the synchronized destination state. If someone edits the destination locally, the next normal sync returns HTTP `409` and records a conflict. An authorized manual request with `"force": true` can overwrite it.
+
+## WP-Cron
+
+The queue checks every minute through WP-Cron. Production sites should invoke `wp-cron.php` from a real system scheduler for predictable processing.
 
 ## Security
 
-Please report vulnerabilities privately rather than opening a public issue. Credentials, authorization headers, and decrypted secrets must never be written to logs.
+- credentials are encrypted at rest and never serialized
+- all receiver and administrator routes have capability checks
+- remote requests and media downloads use WordPress safe HTTP APIs
+- media imports require HTTPS, validate MIME type, and enforce a 10 MB limit
+- logs redact passwords, authorization values, credentials, secrets, and tokens
+- incoming saves cannot create outgoing synchronization loops
+
+Report vulnerabilities privately rather than opening a public issue.
 
 ## License
 

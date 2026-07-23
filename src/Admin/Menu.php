@@ -27,7 +27,7 @@ final readonly class Menu implements Hookable {
 			'multisite-content-sync',
 			array( $this, 'render' ),
 			'dashicons-update-alt',
-			58
+			58,
 		);
 	}
 
@@ -40,17 +40,55 @@ final readonly class Menu implements Hookable {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html__( 'Multisite Content Sync', 'multisite-content-sync' ); ?></h1>
-			<p><?php echo esc_html__( 'Secure connection and receiver foundations are active. The content synchronization workflow will be added in the next milestone.', 'multisite-content-sync' ); ?></p>
-			<h2><?php echo esc_html__( 'Connections', 'multisite-content-sync' ); ?></h2>
+			<p>
+				<?php
+				echo esc_html__(
+					'The synchronization backend is active. Connections, manual sync jobs, retries, and cancellations are currently managed through the authenticated REST API.',
+					'multisite-content-sync'
+				);
+				?>
+			</p>
+			<h2><?php echo esc_html__( 'Destination connections', 'multisite-content-sync' ); ?></h2>
 			<?php if ( array() === $connections ) : ?>
-				<p><?php echo esc_html__( 'No destination sites have been connected yet. Use the REST API endpoint /wp-json/mcs/v1/connections while the React administration interface is being developed.', 'multisite-content-sync' ); ?></p>
+				<p>
+					<?php
+					echo esc_html__(
+						'No destination sites are connected. Create one through POST /wp-json/mcs/v1/connections.',
+						'multisite-content-sync'
+					);
+					?>
+				</p>
 			<?php else : ?>
 				<table class="widefat striped">
-					<thead><tr><th><?php echo esc_html__( 'Name', 'multisite-content-sync' ); ?></th><th><?php echo esc_html__( 'Site', 'multisite-content-sync' ); ?></th><th><?php echo esc_html__( 'Status', 'multisite-content-sync' ); ?></th></tr></thead>
+					<thead>
+						<tr>
+							<th><?php echo esc_html__( 'Name', 'multisite-content-sync' ); ?></th>
+							<th><?php echo esc_html__( 'Site', 'multisite-content-sync' ); ?></th>
+							<th><?php echo esc_html__( 'Status', 'multisite-content-sync' ); ?></th>
+							<th><?php echo esc_html__( 'Last checked', 'multisite-content-sync' ); ?></th>
+						</tr>
+					</thead>
 					<tbody>
-					<?php foreach ( $connections as $connection ) : ?>
-						<tr><td><?php echo esc_html( $connection->name ); ?></td><td><a href="<?php echo esc_url( $connection->site_url ); ?>" target="_blank" rel="noopener noreferrer"><?php echo esc_html( $connection->site_url ); ?></a></td><td><?php echo esc_html( $connection->status->value ); ?></td></tr>
-					<?php endforeach; ?>
+						<?php foreach ( $connections as $connection ) : ?>
+							<tr>
+								<td><?php echo esc_html( $connection->name ); ?></td>
+								<td>
+									<a href="<?php echo esc_url( $connection->site_url ); ?>" target="_blank" rel="noopener noreferrer">
+										<?php echo esc_html( $connection->site_url ); ?>
+									</a>
+								</td>
+								<td><?php echo esc_html( $connection->status->value ); ?></td>
+								<td>
+									<?php
+									echo esc_html(
+										null === $connection->last_checked_at
+											? __( 'Never', 'multisite-content-sync' )
+											: $connection->last_checked_at->format( 'Y-m-d H:i:s T' )
+									);
+									?>
+								</td>
+							</tr>
+						<?php endforeach; ?>
 					</tbody>
 				</table>
 			<?php endif; ?>
