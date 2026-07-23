@@ -60,7 +60,12 @@ final readonly class ConnectionsController implements Hookable {
 				'methods'             => WP_REST_Server::DELETABLE,
 				'callback'            => array( $this, 'delete' ),
 				'permission_callback' => array( $this, 'can_manage' ),
-				'args'                => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+				'args'                => array(
+					'id' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+					),
+				),
 			)
 		);
 
@@ -71,7 +76,12 @@ final readonly class ConnectionsController implements Hookable {
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( $this, 'test' ),
 				'permission_callback' => array( $this, 'can_manage' ),
-				'args'                => array( 'id' => array( 'type' => 'integer', 'minimum' => 1 ) ),
+				'args'                => array(
+					'id' => array(
+						'type'    => 'integer',
+						'minimum' => 1,
+					),
+				),
 			)
 		);
 	}
@@ -97,9 +107,13 @@ final readonly class ConnectionsController implements Hookable {
 
 			return new WP_REST_Response( $this->serialize( $connection ), 201 );
 		} catch ( InvalidArgumentException $exception ) {
-			return new WP_Error( 'mcs_invalid_connection', $exception->getMessage(), array( 'status' => 400 ) );
-		} catch ( Throwable $throwable ) {
-			return new WP_Error( 'mcs_connection_create_failed', $throwable->getMessage(), array( 'status' => 500 ) );
+			return new WP_Error( 'mcs_invalid_connection', sanitize_text_field( $exception->getMessage() ), array( 'status' => 400 ) );
+		} catch ( Throwable ) {
+			return new WP_Error(
+				'mcs_connection_create_failed',
+				__( 'Unable to create the connection.', 'multisite-content-sync' ),
+				array( 'status' => 500 )
+			);
 		}
 	}
 
@@ -107,7 +121,11 @@ final readonly class ConnectionsController implements Hookable {
 		$id = (int) $request->get_param( 'id' );
 
 		if ( ! $this->delete_connection->execute( $id ) ) {
-			return new WP_Error( 'mcs_connection_delete_failed', 'Unable to delete the connection.', array( 'status' => 404 ) );
+			return new WP_Error(
+				'mcs_connection_delete_failed',
+				__( 'Unable to delete the connection.', 'multisite-content-sync' ),
+				array( 'status' => 404 )
+			);
 		}
 
 		return new WP_REST_Response( null, 204 );
@@ -117,7 +135,11 @@ final readonly class ConnectionsController implements Hookable {
 		try {
 			return new WP_REST_Response( $this->test_connection->execute( (int) $request->get_param( 'id' ) ) );
 		} catch ( Throwable $throwable ) {
-			return new WP_Error( 'mcs_connection_test_failed', $throwable->getMessage(), array( 'status' => 502 ) );
+			return new WP_Error(
+				'mcs_connection_test_failed',
+				sanitize_text_field( $throwable->getMessage() ),
+				array( 'status' => 502 )
+			);
 		}
 	}
 
@@ -126,10 +148,26 @@ final readonly class ConnectionsController implements Hookable {
 	 */
 	private function create_args(): array {
 		return array(
-			'name'                 => array( 'type' => 'string', 'required' => true, 'minLength' => 1 ),
-			'site_url'             => array( 'type' => 'string', 'required' => true, 'format' => 'uri' ),
-			'username'             => array( 'type' => 'string', 'required' => true, 'minLength' => 1 ),
-			'application_password' => array( 'type' => 'string', 'required' => true, 'minLength' => 1 ),
+			'name'                 => array(
+				'type'      => 'string',
+				'required'  => true,
+				'minLength' => 1,
+			),
+			'site_url'             => array(
+				'type'     => 'string',
+				'required' => true,
+				'format'   => 'uri',
+			),
+			'username'             => array(
+				'type'      => 'string',
+				'required'  => true,
+				'minLength' => 1,
+			),
+			'application_password' => array(
+				'type'      => 'string',
+				'required'  => true,
+				'minLength' => 1,
+			),
 		);
 	}
 
