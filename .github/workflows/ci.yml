@@ -47,16 +47,17 @@ jobs:
           vendor/bin/phpcbf || true
           git diff --no-ext-diff > phpcbf.patch
           exit "$status"
-      - name: Upload coding standards diagnostics
+      - name: Run static analysis
+        if: always()
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=json > phpstan-report.json
+      - name: Upload quality diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: coding-standards-diagnostics
+          name: quality-diagnostics
           path: |
             phpcs-report.json
             phpcbf.patch
-          if-no-files-found: error
+            phpstan-report.json
+          if-no-files-found: warn
           retention-days: 7
-      - name: Run static analysis
-        if: always()
-        run: composer analyse
