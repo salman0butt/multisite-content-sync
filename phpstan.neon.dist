@@ -9,7 +9,7 @@ parameters:
 		- tools/phpstan/constants.stub.php
 	ignoreErrors:
 		-
-			message: '#Strict comparison using === between null and non-empty-string will always evaluate to false#'
+			message: '#Strict comparison using === between null and mixed will always evaluate to false#'
 			path: src/Application/Content/ContentReceiver.php
 			count: 1
 	treatPhpDocTypesAsCertain: false

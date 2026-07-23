@@ -36,7 +36,8 @@ final class BlockContentRewriter {
 		$blocks = parse_blocks( $content );
 		$blocks = $this->rewrite_blocks( $blocks, $media_map, $url_replacements );
 
-		/** @var array<int|string, array{blockName: string|null, attrs: array, innerBlocks: array<array>, innerHTML: string, innerContent: array}> $blocks */
+		// PHPStan's WordPress stub cannot express the recursive block shape after mutation.
+		/** @phpstan-ignore-next-line argument.type */
 		return serialize_blocks( $blocks );
 	}
 

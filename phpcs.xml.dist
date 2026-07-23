@@ -22,6 +22,7 @@
 	<!-- These values are passed only to internal exception objects and are never rendered. -->
 	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
 		<exclude-pattern>src/Application/Content/ContentReceiver.php</exclude-pattern>
+		<exclude-pattern>src/Infrastructure/Http/WordPressRemoteSiteClient.php</exclude-pattern>
 	</rule>
 
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
