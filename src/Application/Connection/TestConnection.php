@@ -14,6 +14,7 @@ use RuntimeException;
 use SalmanButt\Multisite_Content_Sync\Contracts\ConnectionRepository;
 use SalmanButt\Multisite_Content_Sync\Contracts\RemoteSiteClient;
 use SalmanButt\Multisite_Content_Sync\Domain\Connection\ConnectionStatus;
+use Throwable;
 
 final readonly class TestConnection {
 	public function __construct(
@@ -42,7 +43,7 @@ final readonly class TestConnection {
 			$this->connections->save( $updated );
 
 			return $result;
-		} catch ( \Throwable $throwable ) {
+		} catch ( Throwable $throwable ) {
 			$this->connections->save(
 				$connection->with_health(
 					ConnectionStatus::Failed,
@@ -52,7 +53,7 @@ final readonly class TestConnection {
 				)
 			);
 
-			throw new RuntimeException( $throwable->getMessage(), 0, $throwable );
+			throw new RuntimeException( sanitize_text_field( $throwable->getMessage() ), 0, $throwable );
 		}
 	}
 }
