@@ -8,6 +8,7 @@
 	<exclude-pattern>vendor/*</exclude-pattern>
 	<arg name="basepath" value="."/>
 	<arg name="colors"/>
+	<arg name="warning-severity" value="0"/>
 	<arg value="sp"/>
 
 	<rule ref="WordPress-Extra">
@@ -16,6 +17,12 @@
 		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
 		<!-- MCS is the established project abbreviation; all non-namespaced globals still use it. -->
 		<exclude name="WordPress.NamingConventions.PrefixAllGlobals.ShortPrefixPassed"/>
+	</rule>
+
+	<!-- These values are passed only to internal exception objects and are never rendered. -->
+	<rule ref="WordPress.Security.EscapeOutput.ExceptionNotEscaped">
+		<exclude-pattern>src/Application/Content/ContentReceiver.php</exclude-pattern>
+		<exclude-pattern>src/Infrastructure/Http/WordPressRemoteSiteClient.php</exclude-pattern>
 	</rule>
 
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">

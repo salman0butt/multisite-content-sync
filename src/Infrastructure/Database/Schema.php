@@ -9,10 +9,11 @@ declare(strict_types=1);
 
 namespace SalmanButt\Multisite_Content_Sync\Infrastructure\Database;
 
+use RuntimeException;
 use wpdb;
 
 final readonly class Schema {
-	public const VERSION = '1';
+	public const VERSION = '2';
 
 	public function __construct( private wpdb $database ) {}
 
@@ -63,7 +64,8 @@ final readonly class Schema {
 				last_synced_at datetime NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY source_mapping (connection_id,source_object_type,source_object_id),
-				KEY destination_object_id (destination_object_id)
+				KEY destination_object_id (destination_object_id),
+				KEY status (status)
 			) {$charset_collate};",
 			"CREATE TABLE {$prefix}jobs (
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -76,11 +78,14 @@ final readonly class Schema {
 				available_at datetime NOT NULL,
 				locked_at datetime NULL,
 				request_uuid char(36) NOT NULL,
+				active_key char(64) NULL,
+				force tinyint(1) unsigned NOT NULL DEFAULT 0,
 				last_error text NULL,
 				created_at datetime NOT NULL,
 				completed_at datetime NULL,
 				PRIMARY KEY  (id),
 				UNIQUE KEY request_uuid (request_uuid),
+				UNIQUE KEY active_key (active_key),
 				KEY queue_lookup (status,available_at),
 				KEY connection_id (connection_id)
 			) {$charset_collate};",
@@ -100,10 +105,22 @@ final readonly class Schema {
 			) {$charset_collate};",
 		);
 
-		foreach ( $sql as $statement ) {
-			dbDelta( $statement );
-		}
-
+		dbDelta( $sql );
+		$this->verify_tables();
 		update_option( 'mcs_schema_version', self::VERSION, false );
+	}
+
+	private function verify_tables(): void {
+		foreach ( array( 'connections', 'rules', 'mappings', 'jobs', 'logs' ) as $suffix ) {
+			$table = $this->database->prefix . 'mcs_' . $suffix;
+			$query = $this->database->prepare(
+				'SHOW TABLES LIKE %s',
+				$this->database->esc_like( $table ),
+			);
+
+			if ( $table !== $this->database->get_var( $query ) ) {
+				throw new RuntimeException( 'A required Multisite Content Sync table is unavailable.' );
+			}
+		}
 	}
 }

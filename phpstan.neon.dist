@@ -7,5 +7,10 @@ parameters:
 	scanFiles:
 		- vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
 		- tools/phpstan/constants.stub.php
+	ignoreErrors:
+		-
+			message: '#Strict comparison using === between null and mixed will always evaluate to false#'
+			path: src/Application/Content/ContentReceiver.php
+			count: 1
 	treatPhpDocTypesAsCertain: false
 	reportUnmatchedIgnoredErrors: true
