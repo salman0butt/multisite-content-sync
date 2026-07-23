@@ -17,7 +17,7 @@ final readonly class Schema {
 	public function __construct( private wpdb $database ) {}
 
 	public function install(): void {
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php'; // @phpstan-ignore requireOnce.fileNotFound -- This file is provided by every WordPress runtime.
+		require_once ABSPATH . 'wp-admin/includes/upgrade.php'; // @phpstan-ignore requireOnce.fileNotFound (Provided by every WordPress runtime.)
 
 		$charset_collate = $this->database->get_charset_collate();
 		$prefix          = $this->database->prefix . 'mcs_';
