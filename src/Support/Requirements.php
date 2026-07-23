@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace SalmanButt\Multisite_Content_Sync\Support;
 
 final class Requirements {
-	public const MINIMUM_PHP = '8.3';
+	public const MINIMUM_PHP       = '8.3';
 	public const MINIMUM_WORDPRESS = '7.0';
 
 	public static function is_satisfied(): bool {
