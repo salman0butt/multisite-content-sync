@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<ruleset name="Multisite Content Sync">
+	<description>WordPress coding standards for Multisite Content Sync.</description>
+	<file>multisite-content-sync.php</file>
+	<file>src</file>
+	<file>tests</file>
+	<file>uninstall.php</file>
+	<exclude-pattern>vendor/*</exclude-pattern>
+	<arg name="basepath" value="."/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+	<rule ref="WordPress"/>
+	<rule ref="WordPress-Docs"/>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="mcs"/>
+				<element value="MCS"/>
+			</property>
+		</properties>
+	</rule>
+	<config name="minimum_supported_wp_version" value="7.0"/>
+</ruleset>
