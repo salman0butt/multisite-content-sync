@@ -13,8 +13,8 @@ use RuntimeException;
 use SalmanButt\Multisite_Content_Sync\Contracts\CredentialCipher;
 
 final class OpenSslCredentialCipher implements CredentialCipher {
-	private const CIPHER = 'aes-256-gcm';
-	private const IV_LENGTH = 12;
+	private const CIPHER     = 'aes-256-gcm';
+	private const IV_LENGTH  = 12;
 	private const TAG_LENGTH = 16;
 
 	public function encrypt( string $plain_text ): string {
@@ -36,11 +36,13 @@ final class OpenSslCredentialCipher implements CredentialCipher {
 			throw new RuntimeException( 'Unable to encrypt the credential.' );
 		}
 
-		return base64_encode( $iv . $tag . $cipher_text );
+		// Binary ciphertext needs a transport-safe representation; this is encoding, not obfuscation.
+		return base64_encode( $iv . $tag . $cipher_text ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 	}
 
 	public function decrypt( string $cipher_text ): string {
-		$payload = base64_decode( $cipher_text, true );
+		// The stored value was encoded by encrypt(); strict mode rejects malformed payloads.
+		$payload = base64_decode( $cipher_text, true ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 
 		if ( false === $payload || strlen( $payload ) <= self::IV_LENGTH + self::TAG_LENGTH ) {
 			throw new RuntimeException( 'The encrypted credential is invalid.' );
